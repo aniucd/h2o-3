@@ -1630,4 +1630,25 @@ public class ArrayUtils {
     return res;
   }
 
+  /**
+   * This method will calculate the importance of principal components for PCA/GLRM methods.
+   *
+   * @param std_deviation: array of singular values
+   * @param totVar: sum of squared singular values
+   * @param vars: array of singular values squared
+   * @param prop_var: var[i]/totVar for each i
+   * @param cum_var: cumulative sum of var[i]/totVar from index 0 to index i.
+   */
+  public static void generateIPC(double[] std_deviation, double totVar, double[] vars, double[] prop_var,
+                                 double[] cum_var) {
+    int arrayLen = std_deviation.length;
+
+    if (totVar > 0) {
+      for (int i = 0; i < arrayLen; i++) {
+        vars[i] = std_deviation[i] * std_deviation[i];
+        prop_var[i] = vars[i] / totVar;
+        cum_var[i] = i == 0 ? prop_var[0] : cum_var[i-1] + prop_var[i];
+      }
+    }
+  }
 }

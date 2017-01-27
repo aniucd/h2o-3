@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Random;
 
 import static hex.genmodel.algos.glrm.GlrmLoss.Quadratic;
+import static water.util.ArrayUtils.generateIPC;
 
 /**
  * Generalized Low Rank Models
@@ -582,11 +583,12 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
       GramTask xgram = new GramTask(_job._key, xinfo).doAll(xinfo._adaptedFrame);
       GramTask dgram = new GramTask(_job._key, dinfo).doAll(dinfo._adaptedFrame);
       Cholesky xxchol = regularizedCholesky(xgram._gram);
+      long nobs = xgram._nobs;
 
       // R from QR decomposition of X = QR is upper triangular factor of Cholesky of X'X
       // Gram = X'X/n = LL' -> X'X = (L*sqrt(n))(L'*sqrt(n))
       Matrix x_r = new Matrix(xxchol.getL()).transpose();
-      x_r = x_r.times(Math.sqrt(_train.numRows()));
+      x_r = x_r.times(Math.sqrt(nobs));
 
       Matrix yt = new Matrix(model._output._archetypes_raw.getY(true));
       QRDecomposition yt_qr = new QRDecomposition(yt);
@@ -594,7 +596,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
       Matrix rrmul = x_r.times(yt_r.transpose());
       SingularValueDecomposition rrsvd = new SingularValueDecomposition(rrmul);   // RS' = U \Sigma V'
       double[] sval = rrsvd.getSingularValues();  // get singular values as double array
-      long nobs = _train.numRows();
+
       double dfcorr = nobs/(nobs-1.0);  // find number of observations
       double oneOverNobsm1 = 1.0/Math.sqrt(nobs-1);
 
@@ -605,15 +607,18 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
       model._output._total_variance = dfcorr*dgram._gram.diagSum();
 
       double[] vars = new double[model._output._std_deviation.length];
-      for (int i = 0; i < vars.length; i++)
-        vars[i] = model._output._std_deviation[i]*model._output._std_deviation[i];
-
       double[] prop_var = new double[vars.length];
       double[] cum_var = new double[vars.length];
-      for (int i = 0; i < vars.length; i++) {
-        prop_var[i] = vars[i]/model._output._total_variance;
-        cum_var[i] = i == 0 ? prop_var[0] : cum_var[i-1] + prop_var[i];
-      }
+      generateIPC(model._output._std_deviation, model._output._total_variance, vars, prop_var, cum_var);
+
+//      for (int i = 0; i < vars.length; i++)
+//        vars[i] = model._output._std_deviation[i]*model._output._std_deviation[i];
+//
+//
+//      for (int i = 0; i < vars.length; i++) {
+//        prop_var[i] = vars[i]/model._output._total_variance;
+//        cum_var[i] = i == 0 ? prop_var[0] : cum_var[i-1] + prop_var[i];
+//      }
 
       String[] colTypes = new String[_parms._k];
       String[] colFormats = new String[_parms._k];

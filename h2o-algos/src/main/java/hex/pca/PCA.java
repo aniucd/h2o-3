@@ -127,24 +127,15 @@ public class PCA extends ModelBuilder<PCAModel,PCAModel.PCAParameters,PCAModel.P
               colTypes, colFormats, "",
               new String[pca._output._eigenvectors_raw.length][], pca._output._eigenvectors_raw);
 
-      double[] vars = new double[pca._output._std_deviation.length];
-
-      pca._output._total_variance = 0;
-      for (int i = 0; i < vars.length; i++) {
-        vars[i] = pca._output._std_deviation[i] * pca._output._std_deviation[i];
-//        pca._output._total_variance += vars[i];
-      }
-
       // Importance of principal components
-      double[] prop_var = new double[vars.length];    // Proportion of total variance
-      double[] cum_var = new double[vars.length];    // Cumulative proportion of total variance
-      for (int i = 0; i < vars.length; i++) {
-        prop_var[i] = vars[i] / pca._output._total_variance;
-        cum_var[i] = i == 0 ? prop_var[0] : cum_var[i-1] + prop_var[i];
-      }
+      double[] vars = new double[pca._output._std_deviation.length];
+      double[] prop_var = new double[pca._output._std_deviation.length];    // Proportion of total variance
+      double[] cum_var = new double[pca._output._std_deviation.length];    // Cumulative proportion of total variance
+      generateIPC(pca._output._std_deviation, pca._output._total_variance, vars, prop_var, cum_var);
       pca._output._importance = new TwoDimTable("Importance of components", null,
               new String[]{"Standard deviation", "Proportion of Variance", "Cumulative Proportion"},
-              colHeaders, colTypes, colFormats, "", new String[3][], new double[][]{pca._output._std_deviation, prop_var, cum_var});
+              colHeaders, colTypes, colFormats, "", new String[3][],
+              new double[][]{pca._output._std_deviation, prop_var, cum_var});
       pca._output._model_summary = pca._output._importance;
     }
 
@@ -385,7 +376,7 @@ public class PCA extends ModelBuilder<PCAModel,PCAModel.PCAParameters,PCAModel.P
           parms._gamma_x = parms._gamma_y = 0;
           parms._regularization_x = GlrmRegularizer.None;
           parms._regularization_y = GlrmRegularizer.None;
-          parms._init = GlrmInitialization.PlusPlus;
+          parms._init = GlrmInitialization.SVD; // changed from PlusPlus to SVD.  Seems to give better result
 
           // Build an SVD model
           // Hack: we have to resort to unsafe type casts because _job is of Job<PCAModel> type, whereas a GLRM
